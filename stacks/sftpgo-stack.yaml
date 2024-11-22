@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  sftpgo:
+    image: drakkan/sftpgo:latest
+    container_name: some-sftpgo
+    ports:
+      - "8070:8080"
+      - "2022:2022"
+    environment:
+      - SFTPGO_GRACE_TIME=32  # Optional: Set grace time for graceful shutdown
+    volumes:
+      - sftpgo_data:/data  # Optional: If you want to persist data
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sftpgo.rule=Host(`sftp.example.com`)"  # Domain for SFTPGo
+      - "traefik.http.services.sftpgo.loadbalancer.server.port=8080"
+      - "traefik.http.routers.sftpgo.entrypoints=websecure"
+      - "traefik.http.routers.sftpgo.tls=true"  # Enable TLS (HTTPS)
+      - "traefik.http.routers.sftpgo.tls.certresolver=myresolver"  # Automatic SSL via Let's Encrypt
+    networks:
+      - traefik
+
+volumes:
+  sftpgo_data:
+    driver: local
+
+networks:
+  traefik:
+    external: true  # Use the external 'traefik' network

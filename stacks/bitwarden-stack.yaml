@@ -1,0 +1,38 @@
+# bitwarden-stack.yml
+version: "3.8"
+
+services:
+  bitwarden:
+    image: bitwardenrs/server:latest
+    container_name: bitwarden
+    restart: always
+    environment:
+      - ADMIN_TOKEN=your-admin-token  # Set a secure token for admin access
+      - SIGNUPS_ALLOWED=true  # Set to true if you want to allow new user registrations
+      - LOG_FILE=/data/bitwarden.log
+      - SMTP_HOST=smtp.hostinger.com
+      - SMTP_FROM=notify@example.com
+      - SMTP_PORT=465
+      - SMTP_SSL=true
+      - SMTP_USERNAME=notify@example.com
+      - SMTP_PASSWORD=pkr2qvu3tgm.xaf!KXH
+    volumes:
+      - bitwarden_data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bitwarden.rule=Host(`bitwarden.example.com`)"  # Domain for Bitwarden
+      - "traefik.http.services.bitwarden.loadbalancer.server.port=80"
+      - "traefik.http.routers.bitwarden.entrypoints=websecure"
+      - "traefik.http.routers.bitwarden.tls=true"  # Enable TLS (HTTPS)
+      - "traefik.http.routers.bitwarden.tls.certresolver=myresolver"  # Automatic SSL via Let's Encrypt
+    networks:
+      - traefik
+    expose:
+      - "80"  # Expose the internal port 80 to Traefik
+
+volumes:
+  bitwarden_data:  # Volume for Bitwarden data
+
+networks:
+  traefik:
+    external: true  # Use the external 'traefik' network from Stack 1

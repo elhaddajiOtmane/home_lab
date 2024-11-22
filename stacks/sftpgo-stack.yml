@@ -1,0 +1,35 @@
+# sftpgo-stack.yml
+version: "3.8"
+
+services:
+  sftpgo:
+    image: drakkan/sftpgo:2.6.x
+    container_name: sftpgo
+    restart: always
+    environment:
+      - SFTP_GO_SECRET=your-secret-key  # Set your SFTPGo secret key
+      - SFTP_GO_HOST=0.0.0.0  # Listen on all network interfaces
+    volumes:
+      - sftpgo_data:/data  # Persist SFTPGo data
+      - sftpgo_config:/etc/sftpgo  # Persist SFTPGo configuration
+    ports:
+      - "22:22"  # Expose SFTP port
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sftp.rule=Host(`sftp.example.com`)"  # Domain for SFTPGo
+      - "traefik.http.services.sftp.loadbalancer.server.port=22"  # SFTPGo's port for internal communication
+      - "traefik.http.routers.sftp.entrypoints=websecure"  # Ensure HTTPS (websecure entrypoint)
+      - "traefik.http.routers.sftp.tls=true"  # Enable TLS (HTTPS)
+      - "traefik.http.routers.sftp.tls.certresolver=myresolver"  # Automatic SSL via Let's Encrypt
+    networks:
+      - traefik
+    expose:
+      - "22"  # Expose SFTPGo's port to Traefik
+
+volumes:
+  sftpgo_data:  # Volume for SFTPGo data
+  sftpgo_config:  # Volume for SFTPGo configuration
+
+networks:
+  traefik:
+    external: true  # Use the external 'traefik' network from Stack 1

@@ -1,0 +1,33 @@
+# vault-stack.yml
+version: "3.8"
+
+services:
+  vault:
+    image: hashicorp/vault:1.13.3
+    container_name: vault
+    restart: always
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=root  # Use a root token in dev mode (for testing only)
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200  # Vault will listen on all network interfaces
+    ports:
+      - "8200:8200"  # Expose Vault's HTTP API port
+    volumes:
+      - vault_data:/vault/file  # Data persistence for Vault
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vault.rule=Host(`vault.example.com`)"  # Route to vault.example.com
+      - "traefik.http.services.vault.loadbalancer.server.port=8200"  # Vault API port
+      - "traefik.http.routers.vault.entrypoints=websecure"  # Use HTTPS
+      - "traefik.http.routers.vault.tls=true"  # Enable TLS
+      - "traefik.http.routers.vault.tls.certresolver=myresolver"  # Use the Let's Encrypt cert resolver
+    networks:
+      - traefik
+    expose:
+      - "8200"  # Expose Vault API port to Traefik
+
+volumes:
+  vault_data:  # Persistent storage for Vault
+
+networks:
+  traefik:
+    external: true  # Use the external 'traefik' network from your other stack

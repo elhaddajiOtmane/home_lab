@@ -1,0 +1,113 @@
+version: "3.8"
+
+services:
+  traefik:
+    image: "traefik:v2.10"
+    container_name: traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.myresolver.acme.email=contact@example.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8081:8080" 
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      - traefik
+    restart: unless-stopped
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    ports:
+      - "9002:9000"
+    volumes:
+      - "portainer_data:/data"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.example.com`)"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+      - "traefik.http.routers.portainer.tls=true"
+      - "traefik.http.routers.portainer.tls.certresolver=myresolver"
+    networks:
+      - traefik
+    restart: unless-stopped
+
+  restreamer:
+    image: datarhei/restreamer:latest
+    container_name: restreamer
+    privileged: true
+    ports:
+      - "8082:8080"
+      - "8181:8181"
+      - "1935:1935"
+      - "1936:1936"
+      - "6000:6000/udp"
+    volumes:
+      - "/opt/core/config:/core/config"
+      - "/opt/core/data:/core/data"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.restreamer.rule=Host(`restreamer.example.com`)"
+      - "traefik.http.routers.restreamer.entrypoints=websecure"
+      - "traefik.http.routers.restreamer.tls=true"
+      - "traefik.http.routers.restreamer.tls.certresolver=myresolver"
+      - "traefik.http.services.restreamer.loadbalancer.server.port=8080"
+    networks:
+      - traefik
+    restart: always
+
+  nextcloud:
+    image: nextcloud:30.0
+    container_name: nextcloud
+    environment:
+      - MYSQL_HOST=nextcloud_db
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_PASSWORD=nextcloud_password
+    volumes:
+      - nextcloud_data:/var/www/html
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nextcloud.rule=Host(`nextcloud.example.com`)"
+      - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
+      - "traefik.http.routers.nextcloud.entrypoints=websecure"
+      - "traefik.http.routers.nextcloud.tls=true"
+      - "traefik.http.routers.nextcloud.tls.certresolver=myresolver"
+    networks:
+      - traefik
+    restart: unless-stopped
+
+  nextcloud_db:
+    image: mariadb
+    container_name: nextcloud_db
+    environment:
+      - MYSQL_ROOT_PASSWORD=your_root_password
+      - MYSQL_PASSWORD=nextcloud_password
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - traefik
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  portainer_data:
+  sogo_data:
+  nextcloud_data:
+
+networks:
+  traefik:
+    external: true
